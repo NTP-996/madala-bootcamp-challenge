@@ -110,7 +110,10 @@ impl<T: GovernanceConfig> GovernancePallet<T> {
         }
     }
 
-    pub fn get_proposal_details(&self, proposal_id: u32) -> Result<(String, T::AccountId), &'static str> {
+    pub fn get_proposal_details(
+        &self,
+        proposal_id: u32,
+    ) -> Result<(String, T::AccountId), &'static str> {
         if let Some(proposal) = self.proposals.get(&proposal_id) {
             Ok((proposal.description.clone(), proposal.creator.clone()))
         } else {
