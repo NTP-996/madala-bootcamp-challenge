@@ -1,5 +1,4 @@
 use crate::staking::StakingConfig;
-use crate::system::SystemConfig;
 use std::collections::HashMap;
 
 pub trait GovernanceConfig: StakingConfig {}
@@ -26,16 +25,31 @@ pub struct GovernancePallet<T: GovernanceConfig> {
 
 impl<T: GovernanceConfig> GovernancePallet<T> {
     pub fn new() -> Self {
-        todo!()
+        Self {
+            proposals: HashMap::new(),
+            votes: HashMap::new(),
+            next_proposal_id: 0,
+        }
     }
 
     // Create a new proposal
     pub fn create_proposal(
         &mut self,
-        creator: T::AccountId,
+        _creator: T::AccountId,
         description: String,
     ) -> Result<u32, &'static str> {
-        todo!()
+        let proposal_id = self.next_proposal_id;
+        self.proposals.insert(
+            proposal_id,
+            Proposal {
+                description,
+                yes_votes: 0,
+                no_votes: 0,
+                status: ProposalStatus::Active,
+            },
+        );
+        self.next_proposal_id += 1;
+        Ok(proposal_id)
     }
 
     // Vote on a proposal (true = yes, false = no)
@@ -45,17 +59,43 @@ impl<T: GovernanceConfig> GovernancePallet<T> {
         proposal_id: u32,
         vote_type: bool,
     ) -> Result<(), &'static str> {
-        todo!()
+        let proposal = self
+            .proposals
+            .get_mut(&proposal_id)
+            .ok_or("Proposal not found")?;
+
+        if self.votes.contains_key(&(voter.clone(), proposal_id)) {
+            return Err("Already voted on this proposal");
+        }
+
+        self.votes.insert((voter.clone(), proposal_id), vote_type);
+
+        if vote_type {
+            proposal.yes_votes += 1;
+        } else {
+            proposal.no_votes += 1;
+        }
+        Ok(())
     }
 
     // Get proposal details
     pub fn get_proposal(&self, proposal_id: u32) -> Option<&Proposal> {
-        todo!()
+        self.proposals.get(&proposal_id)
     }
 
     // Finalize a proposal (changes status based on votes)
     pub fn finalize_proposal(&mut self, proposal_id: u32) -> Result<ProposalStatus, &'static str> {
-        todo!()
+        let proposal = self
+            .proposals
+            .get_mut(&proposal_id)
+            .ok_or("Proposal not found")?;
+
+        if proposal.yes_votes > proposal.no_votes {
+            proposal.status = ProposalStatus::Approved;
+        } else {
+            proposal.status = ProposalStatus::Rejected;
+        }
+        Ok(proposal.status.clone())
     }
 }
 
