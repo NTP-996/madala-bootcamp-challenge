@@ -76,7 +76,7 @@ impl<T: GovernanceConfig> GovernancePallet<T> {
         self.votes.insert((voter, proposal_id), vote_type);
 
         if vote_type {
-            proposal.yes_votes += 0
+            proposal.yes_votes += 1
         } else {
             proposal.no_votes += 1
         }
