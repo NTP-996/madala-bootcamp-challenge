@@ -16,32 +16,53 @@ pub struct StakingPallet<T: StakingConfig> {
 
 impl<T: StakingConfig> StakingPallet<T> {
     pub fn new() -> Self {
-        todo!()
+        Self {
+            free_balances: HashMap::default(),
+            staked_balances: HashMap::default(),
+        }
     }
 
     // Set free balance for an account
     pub fn set_balance(&mut self, who: T::AccountId, amount: T::Balance) {
-        todo!()
+        self.free_balances.insert(who.clone(), amount);
     }
 
     // Stake tokens (move from free to staked)
     pub fn stake(&mut self, who: T::AccountId, amount: T::Balance) -> Result<(), &'static str> {
-        todo!()
+        let available_balance = self.get_free_balance(who.clone());
+        let current_stake = self.get_staked_balance(who.clone());
+
+        let new_free_balance = available_balance.checked_sub(&amount).ok_or("not enough funds")?;
+        let new_stake_balance = current_stake.checked_add(&amount).ok_or("overflow")?;
+
+        self.free_balances.insert(who.clone(), new_free_balance);
+        self.staked_balances.insert(who.clone(), new_stake_balance);
+
+        Ok(())
     }
 
     // Unstake tokens (move from staked to free)
     pub fn unstake(&mut self, who: T::AccountId, amount: T::Balance) -> Result<(), &'static str> {
-        todo!()
+        let current_stake = self.get_staked_balance(who.clone());
+        let available_balance = self.get_free_balance(who.clone());
+
+        let new_stake_balance = current_stake.checked_sub(&amount).ok_or("not enough funds")?;
+        let new_free_balance = available_balance.checked_add(&amount).ok_or("overflow")?;
+
+        self.free_balances.insert(who.clone(), new_free_balance);
+        self.staked_balances.insert(who.clone(), new_stake_balance);
+
+        Ok(())
     }
 
     // Get free balance for an account
     pub fn get_free_balance(&self, who: T::AccountId) -> T::Balance {
-        todo!()
+        self.free_balances.get(&who).copied().unwrap_or_else(T::Balance::zero)
     }
 
-    // Get staked balance for an account
+     // Get staked balance for an account
     pub fn get_staked_balance(&self, who: T::AccountId) -> T::Balance {
-        todo!()
+        self.staked_balances.get(&who).copied().unwrap_or_else(T::Balance::zero)
     }
 }
 
@@ -55,28 +76,18 @@ mod tests {
         let alice = 1u64;
         let mut staking = StakingPallet::<Runtime>::new();
 
-        // Set initial balance
         staking.set_balance(alice, 1000);
 
-        // Check free balance
-        assert_eq!(staking.get_free_balance(alice), 1000u64);
-        assert_eq!(staking.get_staked_balance(alice), 0u64);
+        assert_eq!(staking.get_free_balance(alice), 1000);
+        assert_eq!(staking.get_staked_balance(alice), 0);
 
-        // Stake tokens
-        let result = staking.stake(alice, 400);
-        assert!(result.is_ok());
+        assert!(staking.stake(alice, 400).is_ok());
+        assert_eq!(staking.get_free_balance(alice), 600);
+        assert_eq!(staking.get_staked_balance(alice), 400);
 
-        // Check balances after staking
-        assert_eq!(staking.get_free_balance(alice), 600u64);
-        assert_eq!(staking.get_staked_balance(alice), 400u64);
-
-        // Unstake tokens
-        let result = staking.unstake(alice, 100);
-        assert!(result.is_ok());
-
-        // Check balances after unstaking
-        assert_eq!(staking.get_free_balance(alice), 700u64);
-        assert_eq!(staking.get_staked_balance(alice), 300u64);
+        assert!(staking.unstake(alice, 100).is_ok());
+        assert_eq!(staking.get_free_balance(alice), 700);
+        assert_eq!(staking.get_staked_balance(alice), 300);
     }
 
     #[test]
@@ -84,19 +95,10 @@ mod tests {
         let bob = 2u64;
         let mut staking = StakingPallet::<Runtime>::new();
 
-        // Set initial balance
         staking.set_balance(bob, 500);
 
-        // Try to stake more than available
-        let result = staking.stake(bob, 600);
-        assert!(result.is_err());
-
-        // Stake valid amount
-        let result = staking.stake(bob, 300);
-        assert!(result.is_ok());
-
-        // Try to unstake more than staked
-        let result = staking.unstake(bob, 400);
-        assert!(result.is_err());
+        assert!(staking.stake(bob, 600).is_err());
+        assert!(staking.stake(bob, 300).is_ok());
+        assert!(staking.unstake(bob, 400).is_err());
     }
 }
